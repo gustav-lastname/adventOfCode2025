@@ -1,6 +1,6 @@
 local input = {}
 
-for line in io.lines('dag3/input.txt') do table.insert(input, line) end
+for line in io.lines('input.txt') do table.insert(input, line) end
 
 local joltsum = 0
 
