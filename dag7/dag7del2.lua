@@ -23,6 +23,8 @@ local function add_beam(beam, offset)
     table.insert(new_beams, {position = beam.position + offset, amount = beam.amount})
 end
 
+local paths = 1
+
 for line_nr = 2, #input do
     local line = input[line_nr]
     for beam_nr = 1, #beams do
@@ -30,6 +32,7 @@ for line_nr = 2, #input do
         if line:sub(beam.position, beam.position) == '^' then
             add_beam(beam, -1)
             add_beam(beam, 1)
+            paths = paths + beam.amount
         else
             add_beam(beam, 0)
         end
@@ -39,10 +42,10 @@ for line_nr = 2, #input do
     new_beams = {}
 end
 
-local paths = 0
-
-for beam_nr = 1, #beams do
-    paths = paths + beams[beam_nr].amount
-end
+-- local paths = 0
+--
+-- for beam_nr = 1, #beams do
+--     paths = paths + beams[beam_nr].amount
+-- end
 
 print(paths)
