@@ -76,28 +76,30 @@ for part_nr, part in ipairs(parts) do
 
             local region_presents = {}
             local present_type = 1
+            local present_amounts = {}
             for present_amount in string.gmatch(row:sub(string.find(row, '%:[%d%s]+')), '%d+') do
                 for _ = 1, present_amount do
-                    table.insert(region_presents, present_type)
+                    table.insert(region_presents, tonumber(present_type))
                 end
+                table.insert(present_amounts, present_amount)
                 present_type = present_type + 1
             end
+
+            table.sort(region_presents, function (a, b)
+                if present_amounts[a] ~= present_amounts[b] then
+                    return present_amounts[a] < present_amounts[b]
+                end
+                return #presents[a] < #presents[b]
+            end)
 
             table.insert(regions, {dimensions = dimensions, present_sequence = region_presents})
         end
     end
 end
 
--- print(vim.inspect(presents))
--- print(vim.inspect(regions))
-
 local function place_present(step, region)
     if not step.past then
         local present = presents[region.present_sequence[step.present_nr]][step.version]
-        print(vim.inspect(step))
-        for _, row in ipairs(present) do
-            print(row)
-        end
 
         step.outfield = {}
         for y_nr, y in ipairs(step.infield) do
@@ -105,9 +107,8 @@ local function place_present(step, region)
             for x_nr = 1, #y do
                 local x = y:sub(x_nr,x_nr)
                 if present[1+y_nr-step.coordinates[2]] then
-                    if present[1+y_nr-step.coordinates[2]]:sub(1+x_nr-step.coordinates[1], 1+x_nr-step.coordinates[1]) ~= '' then
-                        print(1+x_nr-step.coordinates[1])
-                        print(x_nr, y_nr)
+                    if present[1+y_nr-step.coordinates[2]]:sub(1+x_nr-step.coordinates[1], 1+x_nr-step.coordinates[1]) ~= '' and
+                        1+x_nr-step.coordinates[1] >= 0 then
                         if x == '.' or present[1+y_nr-step.coordinates[2]]:sub(1+x_nr-step.coordinates[1], 1+x_nr-step.coordinates[1]) == '.' then
                             if x == '.' then
                                 x = present[1+y_nr-step.coordinates[2]]:sub(1+x_nr-step.coordinates[1], 1+x_nr-step.coordinates[1])
@@ -121,11 +122,11 @@ local function place_present(step, region)
             end
             table.insert(step.outfield, row)
         end
-        step.past = true
-        print('=====')
         for _, row in ipairs(step.outfield) do
             print(row)
         end
+        print('============')
+        step.past = true
         return 1
     end
 
@@ -134,16 +135,18 @@ local function place_present(step, region)
 
     step.version = step.version + 1
     if tonumber(step.version) > #presents[region.present_sequence[step.present_nr]] then
+        if region.present_sequence[#region.present_sequence] == region.present_sequence[step.present_nr]
+            and step.present_nr ~= #region.present_sequence then
+            return -1
+        end
         step.version = 1
         step.coordinates[1] = step.coordinates[1] + 1
     end
     if step.coordinates[1] + 2  > region.dimensions[1] then
-        print('ajdå')
         step.coordinates[1] = 1
         step.coordinates[2] = step.coordinates[2] + 1
     end
     if step.coordinates[2] + 2  > region.dimensions[2] then
-        print('naj')
         return -1
     end
     return 0
@@ -161,32 +164,33 @@ for _, region in ipairs(regions) do
     end
     placement_sequence[1].infield = infield
 
-    local timeout = 10000000
+    local timeout = 100000
     while true do
         local step = placement_sequence[#placement_sequence]
         local status = place_present(step, region)
-        -- print(vim.inspect(placement_sequence))
-        -- print(vim.inspect(presents[region.present_sequence[step.present_nr]]))
         if status < 0 then
             table.remove(placement_sequence)
-            break
+            if #placement_sequence == 0 then break end
         end
         if status > 0 then
-            print(vim.inspect(placement_sequence))
             if step.present_nr + 1 > #region.present_sequence then
                 possible_trees = possible_trees + 1
                 break
             end
-            local new_step ={coordinates = {1,1}, version = 1}
+            local new_step = {coordinates = {1,1}, version = 1}
             new_step.present_nr = step.present_nr + 1
             new_step.infield = step.outfield
+            if region.present_sequence[new_step.present_nr] == region.present_sequence[step.present_nr] then
+                new_step.coordinates[1] = step.coordinates[1]
+                new_step.coordinates[2] = step.coordinates[2]
+            end
             table.insert(placement_sequence, new_step)
         end
         -- step.version = 1
         -- step.coordinates[1] = 1
         -- step.coordinates[2] = step.coordinates[2] + 1
-        if timeout == 0 then break end
-        timeout = timeout - 1
+        -- if timeout == 0 then break end
+        -- timeout = timeout - 1
     end
 end
 
